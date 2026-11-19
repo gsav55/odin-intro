@@ -1,6 +1,7 @@
 package gravity
 
-//import "core:math/rand"
+import m "core:math"
+import la "core:math/linalg"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
@@ -13,12 +14,31 @@ Entity :: struct {
 
 WIDTH :: i32(1920)
 HEIGHT :: i32(1080)
+G :: 6.674e-11
 
 draw_point :: proc(entity: Entity) {
 	p := b2.Body_GetWorldPoint(entity.body_id, entity.position)
 	rl.DrawCircleV(p, entity.size, entity.color)
 }
 
+orbital_velocity :: proc(mass, radius: f32) -> f32 {
+	return m.sqrt(G * mass / radius)
+}
+
+grav_force :: proc(m1, m2, radius: f32) -> f32 {
+	return G * m1 * m2 / radius
+}
+
+distance :: proc(entity_1, entity_2: Entity) -> f32 {
+	return la.distance(entity_1.position, entity_2.position)
+}
+
+vector_to :: proc(entity_1, entity_2: Entity) -> b2.Vec2 {
+	return b2.Vec2 {
+		(entity_2.position.x - entity_1.position.x),
+		(entity_2.position.y - entity_1.position.y),
+	}
+}
 
 main :: proc() {
 	//width := i32(1920)
