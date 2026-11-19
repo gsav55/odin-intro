@@ -26,7 +26,7 @@ orbital_velocity :: proc(mass, radius: f32) -> f32 {
 }
 
 grav_force :: proc(m1, m2, radius: f32) -> f32 {
-	return G * m1 * m2 / radius
+	return G * m1 * m2 / (radius * radius)
 }
 
 distance :: proc(entity_1, entity_2: Entity) -> f32 {
