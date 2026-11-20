@@ -18,7 +18,7 @@ HEIGHT :: i32(1080)
 G :: 6.674e-11
 
 draw_point :: proc(entity: Entity) {
-	p := b2.Body_GetWorldPoint(entity.body_id, -entity.extent)
+	p := b2.Body_GetPosition(entity.body_id)
 	rl.DrawCircleV(p, entity.size, entity.color)
 
 }
@@ -33,12 +33,17 @@ grav_force :: proc(m1, m2, radius: f32) -> f32 {
 
 // May need to use b2.Body_getPosition if entity.position doesn't update with physics.
 distance :: proc(entity_1, entity_2: Entity) -> f32 {
-	return la.distance(entity_1.extent, entity_2.extent)
+	return la.distance(
+		b2.Body_GetPosition(entity_1.body_id),
+		b2.Body_GetPosition(entity_2.body_id),
+	)
 }
 
 // May need to use b2.Body_getPosition if entity.position doesn't update with physics.
 vector_to :: proc(from, to: Entity) -> b2.Vec2 {
-	return b2.Vec2{(to.extent.x - from.extent.x), (to.extent.y - from.extent.y)}
+	to_pos := b2.Body_GetPosition(to.body_id)
+	from_pos := b2.Body_GetPosition(from.body_id)
+	return b2.Vec2{(to_pos.x - from_pos.x), (to_pos.y - from_pos.y)}
 }
 
 main :: proc() {
@@ -105,7 +110,7 @@ main :: proc() {
 		rl.ClearBackground(rl.DARKGRAY)
 
 		font_size := i32(36)
-		message := fmt.ctprintf("%f", b2.Body_GetWorldPoint(planet.body_id, planet.extent))
+		message := fmt.ctprintf("%f", b2.Body_GetPosition(planet.body_id))
 		text_width := rl.MeasureText(message, font_size)
 		rl.DrawText(message, (WIDTH - text_width) / 2, 50, font_size, rl.LIGHTGRAY)
 
