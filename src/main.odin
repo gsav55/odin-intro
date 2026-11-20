@@ -1,15 +1,16 @@
 package gravity
 
+import "core:fmt"
 import m "core:math"
 import la "core:math/linalg"
 import b2 "vendor:box2d"
 import rl "vendor:raylib"
 
 Entity :: struct {
-	body_id:  b2.BodyId,
-	position: b2.Vec2,
-	color:    rl.Color,
-	size:     f32,
+	body_id: b2.BodyId,
+	extent:  b2.Vec2,
+	color:   rl.Color,
+	size:    f32,
 }
 
 WIDTH :: i32(1920)
@@ -17,27 +18,27 @@ HEIGHT :: i32(1080)
 G :: 6.674e-11
 
 draw_point :: proc(entity: Entity) {
-	p := b2.Body_GetWorldPoint(entity.body_id, entity.position)
+	p := b2.Body_GetWorldPoint(entity.body_id, -entity.extent)
 	rl.DrawCircleV(p, entity.size, entity.color)
+
 }
 
-orbital_velocity :: proc(mass, radius: f32) -> f32 {
-	return m.sqrt(G * mass / radius)
+orbital_velocity :: proc(mass_attractor, radius: f32) -> f32 {
+	return m.sqrt(G * mass_attractor / radius)
 }
 
 grav_force :: proc(m1, m2, radius: f32) -> f32 {
 	return G * m1 * m2 / (radius * radius)
 }
 
+// May need to use b2.Body_getPosition if entity.position doesn't update with physics.
 distance :: proc(entity_1, entity_2: Entity) -> f32 {
-	return la.distance(entity_1.position, entity_2.position)
+	return la.distance(entity_1.extent, entity_2.extent)
 }
 
-vector_to :: proc(entity_1, entity_2: Entity) -> b2.Vec2 {
-	return b2.Vec2 {
-		(entity_2.position.x - entity_1.position.x),
-		(entity_2.position.y - entity_1.position.y),
-	}
+// May need to use b2.Body_getPosition if entity.position doesn't update with physics.
+vector_to :: proc(from, to: Entity) -> b2.Vec2 {
+	return b2.Vec2{(to.extent.x - from.extent.x), (to.extent.y - from.extent.y)}
 }
 
 main :: proc() {
@@ -46,6 +47,7 @@ main :: proc() {
 	width := WIDTH
 	height := HEIGHT
 	rl.InitWindow(width, height, "Gravity")
+	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(60)
 
@@ -57,23 +59,36 @@ main :: proc() {
 	//world_def.gravity.y = 9.8 * length_units_per_meter
 	world_id := b2.CreateWorld(world_def)
 
+	sun_def := b2.DefaultBodyDef()
+	sun_def.position = {f32(WIDTH / 2.), f32(HEIGHT / 2.)}
+
 	sun := Entity {
-		body_id  = b2.CreateBody(world_id, b2.DefaultBodyDef()),
-		position = b2.Vec2{f32(WIDTH) / 2., f32(HEIGHT) / 2.},
-		color    = rl.YELLOW,
-		size     = 64.,
+		body_id = b2.CreateBody(world_id, sun_def),
+		extent  = b2.Vec2{32., 32.},
+		color   = rl.YELLOW,
+		size    = 64.,
 	}
 
+	planet_def := b2.DefaultBodyDef()
+	planet_def.type = .dynamicBody
+	planet_def.position = {f32(WIDTH / 2), f32(HEIGHT / 4)}
+	planet_def.linearVelocity = {500., 0.}
+	planet_def.linearDamping = 0
+
+
 	planet := Entity {
-		body_id  = b2.CreateBody(world_id, b2.DefaultBodyDef()),
-		position = b2.Vec2{f32(WIDTH) / 2., f32(HEIGHT) / 4.},
-		color    = rl.BLUE,
-		size     = 10.,
+		body_id = b2.CreateBody(world_id, planet_def),
+		extent  = b2.Vec2{5., 5.},
+		color   = rl.BLUE,
+		size    = 10.,
 	}
+
+	shape_def := b2.DefaultShapeDef()
+	_ = b2.CreatePolygonShape(planet.body_id, shape_def, b2.MakeBox(planet.size, planet.size))
 
 	system: [2]Entity = {sun, planet}
 
-	pause: bool
+	pause: bool = true
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(.P) {
 			pause = !pause
@@ -88,6 +103,11 @@ main :: proc() {
 		defer rl.EndDrawing()
 
 		rl.ClearBackground(rl.DARKGRAY)
+
+		font_size := i32(36)
+		message := fmt.ctprintf("%f", b2.Body_GetWorldPoint(planet.body_id, planet.extent))
+		text_width := rl.MeasureText(message, font_size)
+		rl.DrawText(message, (WIDTH - text_width) / 2, 50, font_size, rl.LIGHTGRAY)
 
 		for body in system {
 			draw_point(body)
